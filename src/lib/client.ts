@@ -8,6 +8,9 @@ export declare interface TransportClient {
   on(event: 'ready', listener: () => void): this;
   on(event: 'close', listener: () => void): this;
   on(event: 'error', listener: (error: Error) => void): this;
+  once(event: 'ready', listener: () => void): this;
+  once(event: 'close', listener: () => void): this;
+  once(event: 'error', listener: (error: Error) => void): this;
   emit(event: string, data: any, callback: Callback): boolean;
   emit(event: 'ready'): boolean;
   emit(event: 'close'): boolean;
@@ -58,7 +61,7 @@ export class TransportClient extends EventEmitter {
     this.attempts = 0;
     if (!this.client.pending) return this;
     await new Promise<void>((resolve, reject) => {
-      this.client.once('error', reject);
+      this.once('close', reject);
       this.client.connect(this.path, resolve);
     });
     return this;

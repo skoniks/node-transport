@@ -10,6 +10,10 @@ export declare interface TransportServer {
   on(event: 'close', listener: () => void): this;
   on(event: 'error', listener: (error: Error) => void): this;
   on(event: 'client', listener: (client: Socket) => void): this;
+  once(event: 'ready', listener: () => void): this;
+  once(event: 'close', listener: () => void): this;
+  once(event: 'error', listener: (error: Error) => void): this;
+  once(event: 'client', listener: (client: Socket) => void): this;
   emit(event: string, data: any, callback: Callback): boolean;
   emit(event: 'ready'): boolean;
   emit(event: 'close'): boolean;
@@ -62,7 +66,7 @@ export class TransportServer extends EventEmitter {
   public async listen(): Promise<this> {
     if (this.server.listening) return this;
     await new Promise<void>((resolve, reject) => {
-      this.server.once('error', reject);
+      this.once('close', reject);
       this.server.listen(this.path, resolve);
     });
     return this;

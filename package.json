@@ -1,6 +1,6 @@
 {
   "name": "@sknx/transport",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Node IPC transport",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,7 +13,11 @@
     "test": "node dist/test.js"
   },
   "keywords": [
+    "net",
     "ipc",
+    "socket",
+    "client",
+    "server",
     "cluster",
     "transport"
   ],
