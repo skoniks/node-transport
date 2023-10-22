@@ -48,8 +48,11 @@ export class TransportClient extends EventEmitter {
         this.emit('ready');
       })
       .on('close', () => {
-        const { reconnect, reconnectDelay, reconnectAttempts } = this.options;
-        if (reconnect && ++this.attempts <= reconnectAttempts)
+        let reconnect = false;
+        const { reconnectDelay, reconnectAttempts } = this.options;
+        if (reconnectAttempts < 0 && !this.attempts) reconnect = true;
+        else if (reconnectAttempts > ++this.attempts) reconnect = true;
+        if (this.options.reconnect && reconnect)
           setTimeout(() => this.client.connect(this.path), reconnectDelay);
         else this.emit('close');
       })
