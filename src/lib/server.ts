@@ -1,11 +1,10 @@
 import { EventEmitter } from 'node:events';
 import { unlink, unlinkSync } from 'node:fs';
 import { Server, Socket } from 'node:net';
-import { Callback, Listener, ServerOptions } from './types';
+import { Callback, Handler, ServerOptions } from './types';
 import { payload, ppath, uuid } from './utils';
 
 export declare interface TransportServer {
-  on<T>(event: string, listener: Listener<T>): this;
   on(event: 'ready', listener: () => void): this;
   on(event: 'close', listener: () => void): this;
   on(event: 'error', listener: (error: Error) => void): this;
@@ -14,7 +13,6 @@ export declare interface TransportServer {
   once(event: 'close', listener: () => void): this;
   once(event: 'error', listener: (error: Error) => void): this;
   once(event: 'client', listener: (client: Socket) => void): this;
-  emit(event: string, data: any, callback: Callback): boolean;
   emit(event: 'ready'): boolean;
   emit(event: 'close'): boolean;
   emit(event: 'error', error: Error): boolean;
@@ -24,6 +22,7 @@ export declare interface TransportServer {
 export class TransportServer extends EventEmitter {
   private server: Server;
   private clients: Set<Socket>;
+  private handlers: Record<string, Handler>;
   private callbacks: Record<string, Callback>;
   private options: ServerOptions;
   private path: string;
@@ -31,25 +30,45 @@ export class TransportServer extends EventEmitter {
     super();
     process.on('exit', this.clean);
     this.clients = new Set();
+    this.handlers = {};
     this.callbacks = {};
-    this.options = { name: options.name || 'ipc' };
+    this.options = {
+      name: options.name || 'ipc',
+      timeout: options.timeout || 0,
+    };
     this.path = ppath(this.options.name);
     this.server = new Server()
       .on('connection', (client) => {
         this.emit('client', client);
         this.clients.add(client);
+        let buffer = '';
         client
-          .on('data', (buffer) => {
-            const { id, event, data } = payload.decode(buffer);
-            if (id && this.callbacks[id])
-              this.callbacks[id](data), delete this.callbacks[id];
-            else if (event)
-              this.emit(event, data, (data: any) =>
-                client.write(payload.encode({ id, event, data })),
-              );
+          .on('data', (chunk) => {
+            buffer += chunk.toString();
+            buffer.match(/(.*?)\n/g)?.forEach((value) => {
+              buffer = buffer.substring(value.length);
+              const { id, event, error, data } = payload.decode(value);
+              if (id && this.callbacks[id]) {
+                if (error) this.callbacks[id].reject(new Error(error));
+                else this.callbacks[id].resolve(data);
+                delete this.callbacks[id];
+              } else if (event && this.handlers[event])
+                new Promise((resolve, reject) => {
+                  Promise.resolve(
+                    this.handlers[event](data, { resolve, reject }),
+                  )
+                    .then((result) => result !== undefined && resolve(result))
+                    .catch(reject);
+                })
+                  .then((data) => client.write(payload.encode({ id, data })))
+                  .catch(({ message: error = 'Unknown error' }) =>
+                    client.write(payload.encode({ id, error, data: null })),
+                  );
+            });
           })
           .on('close', () => {
             this.clients.delete(client.end());
+            buffer = '';
           });
       })
       .on('listening', () => {
@@ -95,19 +114,23 @@ export class TransportServer extends EventEmitter {
   public getClients(): Set<Socket> {
     return this.clients;
   }
-  public send<T>(
+  public handle<T>(event: string, handler: Handler<T>): this {
+    this.handlers[event] = handler;
+    return this;
+  }
+  public dispatch<T>(
     client: Socket,
     event: string,
     data: any,
-    timeout = 1000,
+    timeout = this.options.timeout,
   ): Promise<T> {
     return new Promise((resolve, reject) => {
       const id = uuid();
-      if (timeout !== -1) {
-        this.callbacks[id] = resolve;
-        const clean = () => delete this.callbacks[id];
-        setTimeout(() => (clean(), reject()), timeout);
-      }
+      const clear = () => delete this.callbacks[id];
+      const error = () => reject(new Error('Dispatch timed out'));
+      if (timeout >= 0) this.callbacks[id] = { resolve, reject };
+      if (timeout > 0) setTimeout(() => (clear(), error()), timeout);
+      if (timeout < 0) resolve(undefined as T);
       client.write(payload.encode({ id, event, data }));
     });
   }

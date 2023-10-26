@@ -1,9 +1,22 @@
-export type ServerOptions = { name: string };
-export type ClientOptions = ServerOptions & {
-  reconnect: boolean;
-  reconnectDelay: number;
-  reconnectAttempts: number;
+export type ServerOptions = {
+  name: string;
+  timeout: number;
 };
-export type Callback = (data: any) => void;
-export type Listener<T> = (data: T, callback: Callback) => void;
-export type Payload = { id?: string; event?: string; data: any };
+export type ClientOptions = ServerOptions & {
+  reconnectAttempts: number;
+  reconnectDelay: number;
+};
+export type Callback = {
+  resolve: (data: any) => void;
+  reject: (reason?: unknown) => void;
+};
+export type Handler<T = any> = (
+  data: T,
+  callback: Callback,
+) => Promise<any> | any;
+export type Payload = {
+  id?: string;
+  event?: string;
+  error?: string;
+  data: any;
+};

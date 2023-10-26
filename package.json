@@ -1,6 +1,6 @@
 {
   "name": "@sknx/transport",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Node IPC transport",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,15 +23,15 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/skoniks/node-transport"
+    "url": "git+https://github.com/skoniks/node-transport.git"
   },
   "author": "skoniks",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^20.8.4",
-    "@typescript-eslint/eslint-plugin": "^6.7.5",
-    "@typescript-eslint/parser": "^6.7.5",
-    "eslint": "^8.51.0",
+    "@types/node": "^20.8.9",
+    "@typescript-eslint/eslint-plugin": "^6.9.0",
+    "@typescript-eslint/parser": "^6.9.0",
+    "eslint": "^8.52.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.1",
     "prettier": "^3.0.3",
